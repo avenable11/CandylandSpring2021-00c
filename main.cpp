@@ -11,6 +11,7 @@ using namespace std;
 const int ARRAY_SIZE = 60;
 const int MAX_PLAYERS = 6;
 const int BOARD_SIZE = 135;
+const string ENDCOLOR = "\033[0m";
 enum colorType {ORANGE, BLUE, GREEN, YELLOW, RED, PURPLE};
 struct cardType 
 {
@@ -59,7 +60,9 @@ void generateBoard(colorType board[], int numSpaces);
 int getNumPlayers();
 void setupPlayers(playerListType& playerList);
 void printBoard(colorType board[], int numSpaces, playerListType& playerList);
-void printPlayerOnBoard(playerListType& playerList, int boardPos);
+void printPlayerOnBoard(playerListType& playerList, int boardPos, string spaceColor);
+string consoleColor(colorType theColor);
+int drawCard(deckType& theDeck);
 
 int main()
 {
@@ -71,6 +74,37 @@ int main()
 	plt.numPlayers = getNumPlayers();
 	setupPlayers(plt);
 	printBoard(board, BOARD_SIZE, plt);
+	bool winner = false;
+	string temp;
+	while(!winner)
+	{
+		for(int i = 0; i < plt.numPlayers; i++)
+		{
+			cout << "Player " << i + 1 << "'s turn: " << endl;
+			cout << "Press any key to continue.";
+			getline(cin, temp);
+			cardType playerCard = myDeck.deck[drawCard(myDeck)];
+			cout << "Player " << i + 1 << " drew a ";
+			outputCard(playerCard);
+			cout << endl;
+			int num = playerCard.isDouble ? 2 : 1;
+			for(int k = 0; k < num; k++)
+				for(int j = plt.list[i].position + 1; j < BOARD_SIZE; j++)
+				{
+					if(playerCard.cardColor == board[j])
+					{
+						plt.list[i].position = j;
+						break;
+					}
+				}
+			if(plt.list[i].position == BOARD_SIZE - 1)
+			{
+				winner = true;
+				cout << "Player " << i + 1 << " has reached the end!" << endl;
+			}
+		}
+		printBoard(board, BOARD_SIZE, plt);
+	}
 	
 	
 	
@@ -153,22 +187,8 @@ void outputCard(cardType theCard)
 	
 	for(int i = 0; i < num; i++)
 	{
-	
-		switch(theCard.cardColor)
-		{
-			case ORANGE: cout << "\033[1m\033[38;5;214m\033[48;5;202m[";
-				cout <<"]\033[0m"; break;
-			case BLUE: cout << "\033[1;34;44m[";
-				cout << "]\033[0m"; break;
-			case YELLOW: cout << "\033[1;33;43m[";
-				cout <<"]\033[0m"; break;
-			case GREEN: cout << "\033[1;32;42m[";
-				cout << "]\033[0m"; break;
-			case RED: cout << "\033[1;31;41m[";
-				cout << "]\033[0m"; break;
-			case PURPLE: cout << "\033[1;35;45m[";
-				cout <<"]\033[0m"; break;
-		}
+		cout << consoleColor(theCard.cardColor) << "[ ]";
+		cout << ENDCOLOR;
 		cout << " ";
 	}
 }
@@ -217,7 +237,7 @@ int getNumPlayers()
 	cout << "Enter the number of players between 2 and 6: ";
 	cin >> numPlayers;
 	cout << endl;
-	while(!cin || numPlayers < 2 || numPlayers > 4)
+	while(!cin || numPlayers < 2 || numPlayers > 6)
 	{
 		if(!cin)
 		{
@@ -256,46 +276,78 @@ void printBoard(colorType board[], int numSpaces, playerListType& playerList)
 	string colorStr;
 	for(int i = 0; i < numSpaces; i++)
 	{
-		switch(board[i])
-			{
-				case ORANGE: colorStr =  "\033[1m\033[38;5;214m\033[48;5;202m";break;
-				case BLUE: colorStr = "\033[1;34;44m"; break;
-				case YELLOW: colorStr = "\033[1;33;43m"; break;
-				case GREEN: colorStr =  "\033[1;32;42m"; break;
-				case RED: colorStr = "\033[1;31;41m"; break;
-				case PURPLE: colorStr = "\033[1;35;45m"; break;
-				default: colorStr = ""; break;
-			}
-		cout << colorStr << "[";
-		printPlayerOnBoard(playerList, i);
-		cout << colorStr;
+		
+		cout << consoleColor(board[i]) << "[";
+		printPlayerOnBoard(playerList, i, consoleColor(board[i]));
+		cout << consoleColor(board[i]);
 		cout <<"]\033[0m";
 		cout << " ";
 		if((i+1) % 5 == 0)
-			cout << endl;
+			cout << endl << endl;
 	}
 }
 
-void printPlayerOnBoard(playerListType& playerList, int boardPos)
+void printPlayerOnBoard(playerListType& playerList, int boardPos, string spaceColor)
 {
 	for(int i = 0; i < playerList.numPlayers; i++)
 	{
 		if(playerList.list[i].position == boardPos)
 		{
-			switch(playerList.list[i].playerColor)
-			{
-				case ORANGE: cout << "\033[1m\033[38;5;214m\033[48;5;202m";break;
-				case BLUE: cout << "\033[1;34;44m"; break;
-				case YELLOW: cout << "\033[1;33;43m"; break;
-				case GREEN: cout << "\033[1;32;42m"; break;
-				case RED: cout << "\033[1;31;41m"; break;
-				case PURPLE: cout << "\033[1;35;45m"; break;
-				default: cout << "["; break;
-			}
+			cout << consoleColor(playerList.list[i].playerColor);
 			cout << i + 1;
-			cout <<"\033[0m";
+			cout << spaceColor;
 		} else 
 			cout << " ";
 	}
 }
+
+string consoleColor(colorType theColor)
+{
+	string out = "\033[";
+	switch(theColor)
+	{
+		case ORANGE: out = out + "1m\033[38;5;214m\033[48;5;166m"; break;
+		case GREEN: out += "1;32;42m"; break;
+		case YELLOW: out += "1;33;43m"; break;
+		case BLUE: out += "1;34;44m"; break;
+		case RED: out += "1;31;41m"; break;
+		case PURPLE: out += "1;35;45m"; break;
+		default: out += "0m"; break;
+	}
+	return out;
+}
+
+int drawCard(deckType& theDeck)
+{
+	if(theDeck.numUsed == ARRAY_SIZE)
+	{
+		cout << "All the cards have been used resetting deck." << endl;
+		theDeck.numUsed = 0;
+		for(int i = 0; i < ARRAY_SIZE; i++)
+			theDeck.used[i] = false;
+	}
+	bool valid = false;
+	int card;
+	while(!valid)
+	{
+		card = rand() % ARRAY_SIZE;
+		if(theDeck.used[card])
+			continue;
+		else
+		{
+			valid = true;
+			theDeck.used[card] = true;
+			theDeck.numUsed++;
+		}
+	}
+	return card;
+}
+
+
+
+
+
+
+
+
 
